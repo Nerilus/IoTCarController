@@ -8,8 +8,7 @@ Installation
 Clonez le dépôt du projet :
 
 # bash
-git clone https://gitlab.com/project_fil_rouge/project_final.git
-cd back
+git clone
 
 # Installez FastAPI :
 pip install fastapi
