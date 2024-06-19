@@ -1,0 +1,52 @@
+image: docker:latest
+services:
+  - docker:dind
+
+variables:
+  CI_REGISTRY_IMAGE: registry.gitlab.com/back-final-project/back
+  PROD_IMAGE_APP_TAG: registry.gitlab.com/back-final-project/back:prd
+  PAT_TOKEN: $PAT
+
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  script:
+    - echo "$CI_DEPLOY_PASSWORD" | docker login registry.gitlab.com -u "$CI_DEPLOY_USER" --password-stdin
+    - echo "ENV=production" >> .env
+    - echo "DB_USERNAME=$CI_DB_USERNAME" >>.env
+    - echo "DB_NAME=$CI_DB_NAME" >> .env
+    - echo "DB_PASSWORD=$CI_DB_PASSWORD " >> .env
+    - echo "IMAGE_APP_TAG=$PROD_IMAGE_APP_TAG" >> .env
+    - docker compose build
+    - docker compose push
+  only:
+    - main
+
+deploy-to-prod:
+  stage: deploy
+  before_script:
+    - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )'
+    - eval $(ssh-agent -s)
+    - echo "$ID_RSA" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan "$SERVER_IP" >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    - ssh "$SERVER_USER@$SERVER_IP" '[ -d ~/project-final ] || mkdir -p ~/project-final'
+    - ssh "$SERVER_USER@$SERVER_IP" "[ -d ~/project-final/.git ] || git clone --depth=1 https://oauth2:$PAT_TOKEN@gitlab.com/back-final-project/back.git ~/project-final"
+    - ssh "$SERVER_USER@$SERVER_IP" "cd ~/project-final && git pull"
+    - ssh "$SERVER_USER@$SERVER_IP" "echo \"ENV=production\" > ~/project-final/.env"
+    - ssh "$SERVER_USER@$SERVER_IP" "echo \"DB_USERNAME=$CI_DB_USERNAME\" >> ~/project-final/.env"
+    - ssh "$SERVER_USER@$SERVER_IP" "echo \"DB_NAME=$CI_DB_NAME\" >> ~/project-final/.env"
+    - ssh "$SERVER_USER@$SERVER_IP" "echo \"DB_PASSWORD=$CI_DB_PASSWORD\" >> ~/project-final/.env"
+    - ssh "$SERVER_USER@$SERVER_IP" "echo \"IMAGE_APP_TAG=$PROD_IMAGE_APP_TAG\" >> ~/project-final/.env"
+    - ssh "$SERVER_USER@$SERVER_IP" "cd ~/project-final && echo \"$CI_DEPLOY_PASSWORD\" | docker login registry.gitlab.com -u \"$CI_DEPLOY_USER\" --password-stdin"
+    - ssh "$SERVER_USER@$SERVER_IP" "cd ~/project-final && docker compose down --remove-orphans"
+    - ssh "$SERVER_USER@$SERVER_IP" "cd ~/project-final && docker compose pull"
+    - ssh "$SERVER_USER@$SERVER_IP" "cd ~/project-final && docker compose up -d"
+  only:
+    - main

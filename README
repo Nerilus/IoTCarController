@@ -1,0 +1,23 @@
+# Projet FastAPI
+Ce projet est une application web basique créée avec FastAPI. Elle expose un seul endpoint qui renvoie un message de bienvenue.
+
+# Prérequis
+# Python 3.7+
+# FastAPI
+Installation
+Clonez le dépôt du projet :
+
+# bash
+git clone https://gitlab.com/project_fil_rouge/project_final.git
+cd back
+
+# Installez FastAPI :
+pip install fastapi
+
+
+# Lancez le serveur avec FastAPI :
+fastapi dev main.py
+
+# Accédez à l'application dans votre navigateur à l'adresse suivante :
+
+http://127.0.0.1:8000/
